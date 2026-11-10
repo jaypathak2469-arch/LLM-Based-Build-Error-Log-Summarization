@@ -23,13 +23,18 @@ class HFBackend:
     max_log_chars = 1400
 
     def __init__(self, model="google/flan-t5-base"):
-        from transformers import pipeline
-        self.model = model
-        self.pipe = pipeline("text2text-generation", model=model)
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+        self.model_name = model
+        self.tokenizer = AutoTokenizer.from_pretrained(model)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model)
+        self.model.eval()
 
     def generate(self, prompt):
-        out = self.pipe(prompt, max_new_tokens=96, truncation=True)
-        return out[0]["generated_text"]
+        import torch
+        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            output = self.model.generate(**inputs, max_new_tokens=96)
+        return self.tokenizer.decode(output[0], skip_special_tokens=True)
 
 
 class AnthropicBackend:
